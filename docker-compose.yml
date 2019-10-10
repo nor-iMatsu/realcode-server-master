@@ -1,0 +1,25 @@
+version: '3'
+services:
+  server:
+    container_name: realcode-server
+    build: .
+    volumes:
+      - ./app:/usr/src/app/app
+    ports:
+      - '8080:8080'
+      # - '80:8080'
+    depends_on:
+      - mongo
+  mongo:
+    container_name: realcode-mongo
+    image: mongo
+    volumes:
+      - ./data:/data/db
+    ports:
+      - '27017:27017'
+  mongo-express:
+    container_name: realcode-mongo-express
+    restart: always
+    image: mongo-express
+    ports:
+      - '8081:8081'
