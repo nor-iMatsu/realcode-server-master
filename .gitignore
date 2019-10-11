@@ -95,3 +95,6 @@ public
 # DynamoDB Local files
 .DS_Store
 package-lock.json
+data.zip
+dump
+real-code.pem
