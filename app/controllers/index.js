@@ -4,6 +4,7 @@ var router = express.Router();
 
 const dbName = 'realcode';
 const answersDatabaseName = 'answers'
+const statusDatabaseName = 'status'
 
 // require('dotenv').config();
 const dbUrl = "mongodb://realcode-mongo:27017"
@@ -65,7 +66,7 @@ async function getExercise(collectionName, quizIndex) {
   });
 }
 
-function registerAnswer(answersCollectionName, quizIndex, name, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime) {
+function registerAnswer(answersCollectionName, quizIndex, name, exerciseIndexListCurrentIndex, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
   return new Promise((resolve, reject) => {
@@ -74,8 +75,8 @@ function registerAnswer(answersCollectionName, quizIndex, name, validity, reason
         reject(err);
       }
 
-      const collection = db.db(answersDatabaseName).collection(answersCollectionName);
-      collection.insertOne({
+      const collection_answers = db.db(answersDatabaseName).collection(answersCollectionName);
+      collection_answers.insertOne({
         "quizIndex": quizIndex,
         "name": name,
         "validity": validity,
@@ -86,6 +87,29 @@ function registerAnswer(answersCollectionName, quizIndex, name, validity, reason
         "descriptionForType": descriptionForType,
         "dataFetchingTime": dataFetchingTime,
         "dataPostingTime": dataPostingTime
+      }, () => {
+        db.close();
+        resolve();
+      });
+    });
+  });
+}
+
+function registerStatus(answersCollectionName, name, exerciseIndexListCurrentIndex) {
+  console.log('registerStatus. Current status: %d', exerciseIndexListCurrentIndex)
+  return new Promise((resolve, reject) => {
+    mongoClient.connect(dbUrl, (err, db) => {
+      if (err) {
+        reject(err);
+      }
+
+      const collection_status = db.db(statusDatabaseName).collection(answersCollectionName);
+
+      //Todo: 同じ回答者の過去のdocumentを削除
+
+      collection_status.insertOne({
+        "name": name,
+        "exerciseIndexListCurrentIndex": exerciseIndexListCurrentIndex
       }, () => {
         db.close();
         resolve();
@@ -137,6 +161,7 @@ router.post('/answer', async (req, res) => {
   const collectionName = requestBody.collectionName;
   const quizIndex = requestBody.quizIndex;
   const name = requestBody.name;
+  const exerciseIndexListCurrentIndex = requestBody.exerciseIndexListCurrentIndex;
   const validity = requestBody.validity;
   const reasonForValidity = requestBody.reasonForValidity;
   const difficulty = requestBody.difficulty;
@@ -147,11 +172,14 @@ router.post('/answer', async (req, res) => {
   const dataPostingTime = requestBody.dataPostingTime;
 
   try {
-    await registerAnswer(collectionName, quizIndex, name, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime);
-    res.status(200).send('Successfully registered data.');
+    await registerAnswer(collectionName, quizIndex, name, exerciseIndexListCurrentIndex, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime);
+    await registerStatus(collectionName, name, exerciseIndexListCurrentIndex);
+    res.status(200).send('Successfully registered answer.');
   } catch (err) {
     res.status(500).send(err);
   }
+
+
 });
 
 module.exports = router;
