@@ -96,7 +96,8 @@ async function getExercise(collectionName, quizIndex) {
   });
 }
 
-function registerAnswer(answersCollectionName, quizIndex, name, exerciseIndexListCurrentIndex, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime) {
+function registerAnswer(answersCollectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
+  libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
   return new Promise((resolve, reject) => {
@@ -108,13 +109,14 @@ function registerAnswer(answersCollectionName, quizIndex, name, exerciseIndexLis
       const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
       collectionAnswers.insertOne({
         "quizIndex": quizIndex,
-        "name": name,
         "validity": validity,
         "reasonForValidity": reasonForValidity,
         "difficulty": difficulty,
-        "libraryName": libraryName,
         "selectedTypes": selectedTypes,
-        "descriptionForType": descriptionForType,
+        "descriptionForSyntax": descriptionForSyntax,
+        "descriptionForRefactoring": descriptionForRefactoring,
+        "libraryName": libraryName,
+        "descriptionForOtherType": descriptionForOtherType,
         "dataFetchingTime": dataFetchingTime,
         "dataPostingTime": dataPostingTime
       }, () => {
@@ -210,19 +212,21 @@ router.post('/answer', async (req, res) => {
   // collectionName is participantId
   const collectionName = requestBody.participantId;
   const quizIndex = requestBody.quizIndex;
-  const name = requestBody.name;
   const exerciseIndexListCurrentIndex = requestBody.exerciseIndexListCurrentIndex;
   const validity = requestBody.validity;
   const reasonForValidity = requestBody.reasonForValidity;
   const difficulty = requestBody.difficulty;
-  const libraryName = requestBody.libraryName;
   const selectedTypes = requestBody.selectedTypes;
-  const descriptionForType = requestBody.descriptionForType;
+  const descriptionForSyntax = requestBody.descriptionForSyntax;
+  const descriptionForRefactoring = requestBody.descriptionForRefactoring;
+  const libraryName = requestBody.libraryName;
+  const descriptionForOtherType = requestBody.descriptionForOtherType;
   const dataFetchingTime = requestBody.dataFetchingTime;
   const dataPostingTime = requestBody.dataPostingTime;
 
   try {
-    await registerAnswer(collectionName, quizIndex, name, exerciseIndexListCurrentIndex, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime);
+    await registerAnswer(collectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
+      libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime);
     await deleteStatusDocuments(collectionName);
     await registerStatus(collectionName, exerciseIndexListCurrentIndex, dataPostingTime);
     res.status(200).send('Successfully registered answer.');
