@@ -2,7 +2,7 @@ var express = require('express');
 var mongoClient = require("mongodb").MongoClient;
 var router = express.Router();
 
-const dbName = 'realcode';
+const exercisesDatabaseName = 'realcode';
 const answersDatabaseName = 'answers'
 const statusDatabaseName = 'status'
 
@@ -24,7 +24,7 @@ function getNumberOfExercises(collectionName) {
         reject(err);
       }
 
-      const collection = db.db(dbName).collection(collectionName);
+      const collection = db.db(exercisesDatabaseName).collection(collectionName);
 
       collection.find({}).count((err, res) => {
         if (err) {
@@ -38,6 +38,36 @@ function getNumberOfExercises(collectionName) {
   });
 }
 
+function getStatus(collectionName) {
+  console.log('getCurrentExerciseIndex. Collection name: %s', collectionName)
+  return new Promise((resolve, reject) => {
+    mongoClient.connect(dbUrl, (err, db) => {
+      if (err) {
+        reject(err);
+      }
+
+      const collection = db.db(statusDatabaseName).collection(collectionName);
+
+      collection.findOne({}, function(err, result) {
+        db.close();
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  });
+}
+
+function getCurtrentExerciseIndex(exerciseCurrentIndexDict) {
+  if (exerciseCurrentIndexDict) {
+    return exerciseCurrentIndexDict["exerciseIndexListCurrentIndex"];
+  } else {
+    return -1;
+  }
+}
+
 async function getExercise(collectionName, quizIndex) {
   console.log('getExercise. Collection name: %s', collectionName)
 
@@ -46,7 +76,7 @@ async function getExercise(collectionName, quizIndex) {
       if (err) {
         reject(err);
       }
-      const collection = db.db(dbName).collection(collectionName);
+      const collection = db.db(exercisesDatabaseName).collection(collectionName);
       collection.find({})
         .sort({
           'ID': 1
@@ -75,8 +105,8 @@ function registerAnswer(answersCollectionName, quizIndex, name, exerciseIndexLis
         reject(err);
       }
 
-      const collection_answers = db.db(answersDatabaseName).collection(answersCollectionName);
-      collection_answers.insertOne({
+      const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
+      collectionAnswers.insertOne({
         "quizIndex": quizIndex,
         "name": name,
         "validity": validity,
@@ -95,21 +125,35 @@ function registerAnswer(answersCollectionName, quizIndex, name, exerciseIndexLis
   });
 }
 
-function registerStatus(answersCollectionName, name, exerciseIndexListCurrentIndex) {
+
+function deleteStatusDocuments(answersCollectionName) {
+  console.log("deleteStatusDocuments")
+  return new Promise((resolve, reject) => {
+    mongoClient.connect(dbUrl, (err, db) => {
+      if (err) {
+        reject(err);
+      }
+      const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
+      collectionStatus.deleteMany({
+      }, () => {
+        db.close();
+        resolve();
+      });
+    });
+  });
+}
+
+function registerStatus(answersCollectionName, exerciseIndexListCurrentIndex, dataPostingTime) {
   console.log('registerStatus. Current status: %d', exerciseIndexListCurrentIndex)
   return new Promise((resolve, reject) => {
     mongoClient.connect(dbUrl, (err, db) => {
       if (err) {
         reject(err);
       }
-
-      const collection_status = db.db(statusDatabaseName).collection(answersCollectionName);
-
-      //Todo: 同じ回答者の過去のdocumentを削除
-
-      collection_status.insertOne({
-        "name": name,
-        "exerciseIndexListCurrentIndex": exerciseIndexListCurrentIndex
+      const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
+      collectionStatus.insertOne({
+        "exerciseIndexListCurrentIndex": exerciseIndexListCurrentIndex,
+        "dataPostingTime": dataPostingTime
       }, () => {
         db.close();
         resolve();
@@ -133,15 +177,20 @@ router.post('/', (req, res) => {
 });
 
 router.get('/exercise-number', async (req, res) => {
-  const collectionName = String(req.query['collection']);
+  const collectionName = String(req.query['pid']);
   const exerciseNumber = await getNumberOfExercises(collectionName);
+  const exerciseCurrentIndexDict = await getStatus(collectionName);
+  const currentIndex = await getCurtrentExerciseIndex(exerciseCurrentIndexDict)
+  // const currentIndex = await exerciseCurrentIndexDict["exerciseIndexListCurrentIndex"]
+  console.log("currentIndex: ", currentIndex)
   res.json({
-    number: exerciseNumber
+    totalNumber: exerciseNumber,
+    currentIndex: currentIndex+1
   });
 });
 
 router.get('/exercise', async (req, res) => {
-  const collectionName = String(req.query['collection']);
+  const collectionName = String(req.query['pid']);
   const exerciseIndex = Number(req.query['index']);
   const exercise = await getExercise(collectionName, exerciseIndex);
   if (exercise.length === 0) {
@@ -158,7 +207,8 @@ router.get('/exercise', async (req, res) => {
 router.post('/answer', async (req, res) => {
   const requestBody = req.body;
 
-  const collectionName = requestBody.collectionName;
+  // collectionName is participantId
+  const collectionName = requestBody.participantId;
   const quizIndex = requestBody.quizIndex;
   const name = requestBody.name;
   const exerciseIndexListCurrentIndex = requestBody.exerciseIndexListCurrentIndex;
@@ -173,7 +223,8 @@ router.post('/answer', async (req, res) => {
 
   try {
     await registerAnswer(collectionName, quizIndex, name, exerciseIndexListCurrentIndex, validity, reasonForValidity, difficulty, libraryName, selectedTypes, descriptionForType, dataFetchingTime, dataPostingTime);
-    await registerStatus(collectionName, name, exerciseIndexListCurrentIndex);
+    await deleteStatusDocuments(collectionName);
+    await registerStatus(collectionName, exerciseIndexListCurrentIndex, dataPostingTime);
     res.status(200).send('Successfully registered answer.');
   } catch (err) {
     res.status(500).send(err);
