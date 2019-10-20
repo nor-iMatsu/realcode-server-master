@@ -96,53 +96,52 @@ async function getExercise(collectionName, quizIndex) {
   });
 }
 
-function registerAnswer(answersCollectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
+async function registerAnswer(answersCollectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
   libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
-  return new Promise((resolve, reject) => {
-    mongoClient.connect(dbUrl, (err, db) => {
-      if (err) {
-        reject(err);
-      }
+  mongoClient.connect(dbUrl, (err, db) => {
+    if (err) {
+      console.log(err);
+      return;
+    }
 
-      const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
-      collectionAnswers.insertOne({
-        "quizIndex": quizIndex,
-        "validity": validity,
-        "reasonForValidity": reasonForValidity,
-        "difficulty": difficulty,
-        "selectedTypes": selectedTypes,
-        "descriptionForSyntax": descriptionForSyntax,
-        "descriptionForRefactoring": descriptionForRefactoring,
-        "libraryName": libraryName,
-        "descriptionForOtherType": descriptionForOtherType,
-        "dataFetchingTime": dataFetchingTime,
-        "dataPostingTime": dataPostingTime
-      }, () => {
-        db.close();
-        resolve();
-      });
+    const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
+    collectionAnswers.insertOne({
+      "quizIndex": quizIndex,
+      "validity": validity,
+      "reasonForValidity": reasonForValidity,
+      "difficulty": difficulty,
+      "selectedTypes": selectedTypes,
+      "descriptionForSyntax": descriptionForSyntax,
+      "descriptionForRefactoring": descriptionForRefactoring,
+      "libraryName": libraryName,
+      "descriptionForOtherType": descriptionForOtherType,
+      "dataFetchingTime": dataFetchingTime,
+      "dataPostingTime": dataPostingTime
+    }, () => {
+      db.close();
     });
   });
+
+  return;
 }
 
 
-function deleteStatusDocuments(answersCollectionName) {
-  console.log("deleteStatusDocuments")
-  return new Promise((resolve, reject) => {
-    mongoClient.connect(dbUrl, (err, db) => {
-      if (err) {
-        reject(err);
-      }
-      const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
-      collectionStatus.deleteMany({
-      }, () => {
-        db.close();
-        resolve();
-      });
+async function deleteStatusDocuments(answersCollectionName) {
+  console.log("deleteStatusDocuments. Collection name: %s", answersCollectionName)
+  mongoClient.connect(dbUrl, (err, db) => {
+    if (err) {
+      console.log(err);
+      return;
+    }
+    const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
+    collectionStatus.deleteMany({
+    }, () => {
+      db.close();
     });
   });
+  return;
 }
 
 function registerStatus(answersCollectionName, exerciseIndexListCurrentIndex, dataPostingTime) {
@@ -225,9 +224,14 @@ router.post('/answer', async (req, res) => {
   const dataPostingTime = requestBody.dataPostingTime;
 
   try {
-    await registerAnswer(collectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
+    // 非同期処理を並列で実行
+    const p1 = registerAnswer(collectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
       libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime);
-    await deleteStatusDocuments(collectionName);
+    const p2 = deleteStatusDocuments(collectionName);
+    await Promise.all([p1,p2]).then(results => {
+      console.log(results);
+    })
+
     await registerStatus(collectionName, exerciseIndexListCurrentIndex, dataPostingTime);
     res.status(200).send('Successfully registered answer.');
   } catch (err) {
