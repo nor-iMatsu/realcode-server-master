@@ -96,8 +96,8 @@ async function getExercise(collectionName, quizIndex) {
   });
 }
 
-async function registerAnswer(answersCollectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
-  libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime) {
+async function registerAnswer(answersCollectionName, quizIndex, understanding, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+  descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForOtherType, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
   mongoClient.connect(dbUrl, (err, db) => {
@@ -109,13 +109,16 @@ async function registerAnswer(answersCollectionName, quizIndex, validity, reason
     const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
     collectionAnswers.insertOne({
       "quizIndex": quizIndex,
+      "understanding": understanding,
       "validity": validity,
-      "reasonForValidity": reasonForValidity,
+      "selectedReasonNoValid": selectedReasonNoValid,
+      "descriptionForNoValid": descriptionForNoValid,
       "difficulty": difficulty,
       "selectedTypes": selectedTypes,
-      "descriptionForSyntax": descriptionForSyntax,
-      "descriptionForRefactoring": descriptionForRefactoring,
-      "libraryName": libraryName,
+      "descriptionForException": descriptionForException,
+      "descriptionForOtherSyntax": descriptionForOtherSyntax,
+      "descriptionForLogging": descriptionForLogging,
+      "descriptionForLibrary": descriptionForLibrary,
       "descriptionForOtherType": descriptionForOtherType,
       "dataFetchingTime": dataFetchingTime,
       "dataPostingTime": dataPostingTime
@@ -179,6 +182,7 @@ router.post('/', (req, res) => {
 
 router.get('/exercise-number', async (req, res) => {
   const collectionName = String(req.query['pid']);
+  // const collectionName = "exercises_py_all";
   const exerciseNumber = await getNumberOfExercises(collectionName);
   const exerciseCurrentIndexDict = await getStatus(collectionName);
   const currentIndex = await getCurtrentExerciseIndex(exerciseCurrentIndexDict)
@@ -192,7 +196,9 @@ router.get('/exercise-number', async (req, res) => {
 
 router.get('/exercise', async (req, res) => {
   const collectionName = String(req.query['pid']);
+  // const collectionName = "exercises_py_all";
   const exerciseIndex = Number(req.query['index']);
+  // const exerciseIndex = 81;
   const exercise = await getExercise(collectionName, exerciseIndex);
   if (exercise.length === 0) {
     res.json({
@@ -212,21 +218,23 @@ router.post('/answer', async (req, res) => {
   const collectionName = requestBody.participantId;
   const quizIndex = requestBody.quizIndex;
   const exerciseIndexListCurrentIndex = requestBody.exerciseIndexListCurrentIndex;
-  const validity = requestBody.validity;
-  const reasonForValidity = requestBody.reasonForValidity;
-  const difficulty = requestBody.difficulty;
+  const understanding = requestBody.understanding; //Q1
+  const validity = requestBody.validity; //Q2
+  const selectedReasonNoValid = requestBody.selectedReasonNoValid; //Q2
+  const descriptionForNoValid = requestBody.descriptionForNoValid; //Q2
+  const difficulty = requestBody.difficulty; //Q3
   const selectedTypes = requestBody.selectedTypes;
-  const descriptionForSyntax = requestBody.descriptionForSyntax;
-  const descriptionForRefactoring = requestBody.descriptionForRefactoring;
-  const libraryName = requestBody.libraryName;
+  const descriptionForException = requestBody.descriptionForException;
+  const descriptionForOtherSyntax = requestBody.descriptionForOtherSyntax;
+  const descriptionForLogging = requestBody.descriptionForLogging;
+  const descriptionForLibrary = requestBody.descriptionForLibrary;
   const descriptionForOtherType = requestBody.descriptionForOtherType;
   const dataFetchingTime = requestBody.dataFetchingTime;
   const dataPostingTime = requestBody.dataPostingTime;
 
   try {
-    // 非同期処理を並列で実行
-    const p1 = registerAnswer(collectionName, quizIndex, validity, reasonForValidity, difficulty, selectedTypes, descriptionForSyntax, descriptionForRefactoring,
-      libraryName, descriptionForOtherType, dataFetchingTime, dataPostingTime);
+    const p1 = registerAnswer(collectionName, quizIndex, understanding, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+      descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForOtherType, dataFetchingTime, dataPostingTime);
     const p2 = deleteStatusDocuments(collectionName);
     await Promise.all([p1,p2]).then(results => {
       console.log(results);
