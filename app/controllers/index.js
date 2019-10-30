@@ -68,7 +68,7 @@ function getCurtrentExerciseIndex(exerciseCurrentIndexDict) {
   }
 }
 
-async function getExercise(collectionName, quizIndex) {
+function getExercise(collectionName, quizIndex) {
   console.log('getExercise. Collection name: %s', collectionName)
 
   return new Promise((resolve, reject) => {
@@ -96,34 +96,39 @@ async function getExercise(collectionName, quizIndex) {
   });
 }
 
-async function registerAnswer(answersCollectionName, quizIndex, understanding, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
-  descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForOtherType, dataFetchingTime, dataPostingTime) {
+function registerAnswer(answersCollectionName, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+  descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForData, descriptionForAlgorithms, descriptionForOtherType, comments, lineNumbers, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
-  mongoClient.connect(dbUrl, (err, db) => {
-    if (err) {
-      console.log(err);
-      return;
-    }
+  return new Promise((resolve, reject) => {
+    mongoClient.connect(dbUrl, (err, db) => {
+      if (err) {
+        reject(err);
+      }
 
-    const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
-    collectionAnswers.insertOne({
-      "quizIndex": quizIndex,
-      "understanding": understanding,
-      "validity": validity,
-      "selectedReasonNoValid": selectedReasonNoValid,
-      "descriptionForNoValid": descriptionForNoValid,
-      "difficulty": difficulty,
-      "selectedTypes": selectedTypes,
-      "descriptionForException": descriptionForException,
-      "descriptionForOtherSyntax": descriptionForOtherSyntax,
-      "descriptionForLogging": descriptionForLogging,
-      "descriptionForLibrary": descriptionForLibrary,
-      "descriptionForOtherType": descriptionForOtherType,
-      "dataFetchingTime": dataFetchingTime,
-      "dataPostingTime": dataPostingTime
-    }, () => {
-      db.close();
+      const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
+      collectionAnswers.insertOne({
+        "quizIndex": quizIndex,
+        "validity": validity,
+        "selectedReasonNoValid": selectedReasonNoValid,
+        "descriptionForNoValid": descriptionForNoValid,
+        "difficulty": difficulty,
+        "selectedTypes": selectedTypes,
+        "descriptionForException": descriptionForException,
+        "descriptionForOtherSyntax": descriptionForOtherSyntax,
+        "descriptionForLogging": descriptionForLogging,
+        "descriptionForLibrary": descriptionForLibrary,
+        "descriptionForData": descriptionForData,
+        "descriptionForAlgorithms": descriptionForAlgorithms,
+        "descriptionForOtherType": descriptionForOtherType,
+        "comments": comments,
+        "lineNumbers": lineNumbers,
+        "dataFetchingTime": dataFetchingTime,
+        "dataPostingTime": dataPostingTime
+      }, () => {
+        db.close();
+        resolve();
+      });
     });
   });
 
@@ -131,20 +136,21 @@ async function registerAnswer(answersCollectionName, quizIndex, understanding, v
 }
 
 
-async function deleteStatusDocuments(answersCollectionName) {
+function deleteStatusDocuments(answersCollectionName) {
   console.log("deleteStatusDocuments. Collection name: %s", answersCollectionName)
-  mongoClient.connect(dbUrl, (err, db) => {
-    if (err) {
-      console.log(err);
-      return;
-    }
-    const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
-    collectionStatus.deleteMany({
-    }, () => {
-      db.close();
+  return new Promise((resolve, reject) => {
+    mongoClient.connect(dbUrl, (err, db) => {
+      if (err) {
+        reject(err);
+      }
+      const collectionStatus = db.db(statusDatabaseName).collection(answersCollectionName);
+      collectionStatus.deleteMany({
+      }, () => {
+        db.close();
+        resolve();
+      });
     });
   });
-  return;
 }
 
 function registerStatus(answersCollectionName, exerciseIndexListCurrentIndex, dataPostingTime) {
@@ -218,28 +224,27 @@ router.post('/answer', async (req, res) => {
   const collectionName = requestBody.participantId;
   const quizIndex = requestBody.quizIndex;
   const exerciseIndexListCurrentIndex = requestBody.exerciseIndexListCurrentIndex;
-  const understanding = requestBody.understanding; //Q1
-  const validity = requestBody.validity; //Q2
-  const selectedReasonNoValid = requestBody.selectedReasonNoValid; //Q2
-  const descriptionForNoValid = requestBody.descriptionForNoValid; //Q2
-  const difficulty = requestBody.difficulty; //Q3
+  const validity = requestBody.validity; //Q3
+  const selectedReasonNoValid = requestBody.selectedReasonNoValid; //Q3
+  const descriptionForNoValid = requestBody.descriptionForNoValid; //Q3
+  const difficulty = requestBody.difficulty; //Q4
   const selectedTypes = requestBody.selectedTypes;
   const descriptionForException = requestBody.descriptionForException;
   const descriptionForOtherSyntax = requestBody.descriptionForOtherSyntax;
   const descriptionForLogging = requestBody.descriptionForLogging;
   const descriptionForLibrary = requestBody.descriptionForLibrary;
+  const descriptionForData = requestBody.descriptionForData;
+  const descriptionForAlgorithms = requestBody.descriptionForAlgorithms;
   const descriptionForOtherType = requestBody.descriptionForOtherType;
+  const comments = requestBody.comments;
+  const lineNumbers = requestBody.lineNumbers;
   const dataFetchingTime = requestBody.dataFetchingTime;
   const dataPostingTime = requestBody.dataPostingTime;
 
   try {
-    const p1 = registerAnswer(collectionName, quizIndex, understanding, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
-      descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForOtherType, dataFetchingTime, dataPostingTime);
-    const p2 = deleteStatusDocuments(collectionName);
-    await Promise.all([p1,p2]).then(results => {
-      console.log(results);
-    })
-
+    await registerAnswer(collectionName, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+      descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForData, descriptionForAlgorithms, descriptionForOtherType, comments, lineNumbers, dataFetchingTime, dataPostingTime);
+    await deleteStatusDocuments(collectionName);
     await registerStatus(collectionName, exerciseIndexListCurrentIndex, dataPostingTime);
     res.status(200).send('Successfully registered answer.');
   } catch (err) {
