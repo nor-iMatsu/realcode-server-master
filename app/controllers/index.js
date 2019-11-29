@@ -96,7 +96,7 @@ function getExercise(collectionName, quizIndex) {
   });
 }
 
-function registerAnswer(answersCollectionName, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+function registerAnswer(answersCollectionName, issueUrl, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
   descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForData, descriptionForAlgorithms, descriptionForOtherType, comments, lineNumbers, dataFetchingTime, dataPostingTime) {
   console.log('registerAnswer. Collection name: %s', answersCollectionName)
 
@@ -108,6 +108,7 @@ function registerAnswer(answersCollectionName, quizIndex, validity, selectedReas
 
       const collectionAnswers = db.db(answersDatabaseName).collection(answersCollectionName);
       collectionAnswers.insertOne({
+        "issueUrl": issueUrl,
         "quizIndex": quizIndex,
         "validity": validity,
         "selectedReasonNoValid": selectedReasonNoValid,
@@ -241,8 +242,10 @@ router.post('/answer', async (req, res) => {
   const dataFetchingTime = requestBody.dataFetchingTime;
   const dataPostingTime = requestBody.dataPostingTime;
 
+  const issueUrl = requestBody.issueUrl;
+
   try {
-    await registerAnswer(collectionName, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
+    await registerAnswer(collectionName, issueUrl, quizIndex, validity, selectedReasonNoValid, descriptionForNoValid, difficulty, selectedTypes, descriptionForException,
       descriptionForOtherSyntax, descriptionForLogging, descriptionForLibrary, descriptionForData, descriptionForAlgorithms, descriptionForOtherType, comments, lineNumbers, dataFetchingTime, dataPostingTime);
     await deleteStatusDocuments(collectionName);
     await registerStatus(collectionName, exerciseIndexListCurrentIndex, dataPostingTime);
