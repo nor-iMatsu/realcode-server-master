@@ -6,7 +6,8 @@
 2. Run `$ cd realcode-server`
 3. Run `$ docker-compose build`
    - `./app`と`./data`は，コピーせずローカルの内容をマウントします．
-   - `./data` には，既にクイズのデータが保存されています．
+   - Google Driveの `Research_result/2019_master/Matsui/mongodump` フォルダにクイズと回答のmongodbデータがあるので，解凍します．
+   - 解凍すると，`./data` にはクイズと回答のデータが保存されます．
 4. Run `$ docker-compose pull`
    - `Node`，`mongodb`，`mongo-express`のイメージをプルします．
    - 1回実行すれば以後実行する必要はありません．
@@ -55,4 +56,4 @@ const body = JSON.stringify({
 ```
 
 ## ローカル/リモート切り替え
-* `docker-compose.yml` の `server:` の `ports` のコメントアウト行を入れ替える
+* `docker-compose.yml` の `server:` の `ports` のコメントアウト行を入れ替えます．

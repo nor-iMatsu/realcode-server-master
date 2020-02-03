@@ -6,8 +6,8 @@ services:
     volumes:
       - ./app:/usr/src/app/app
     ports:
-      # - '8080:8080'
-      - '80:8080'
+      - '8080:8080' #local
+      # - '80:8080' #remote
     depends_on:
       - mongo
   mongo:
